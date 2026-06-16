@@ -5,6 +5,7 @@ import it.zbaldi.model.GitWorktreeManager;
 import it.zbaldi.model.ReleaseInfo;
 import it.zbaldi.model.ReleaseInfoSearcher;
 import it.zbaldi.model.extractors.CkManagerExtractor;
+import it.zbaldi.model.extractors.GitManagerExtractor;
 
 import java.util.List;
 
@@ -27,6 +28,10 @@ public class ClassAnalyzerController {
         }
     }
 
+    public void prova() {
+        new GitManagerExtractor().startAnalysis(new CkManagerExtractor().startAnalysis("storm_tags\\1_storm_0.9.0.1"));
+    }
+
     /**
      * Populates CK metrics for a given release path.
      * Note: The path should be in a format compatible with Windows file paths,
@@ -36,8 +41,20 @@ public class ClassAnalyzerController {
      * @param releasePath The path to the release directory to analyze
      * @return A list of DatasetEntry objects containing CK metrics for each class
      */
-    private List<DatasetEntry> populateMetricsCk(String releasePath) {
+    private List<DatasetEntry> populateCkMetrics(String releasePath) {
 
         return new CkManagerExtractor().startAnalysis(releasePath);
+    }
+
+    /**
+     * Populates Git-based commit metrics for each dataset entry by delegating the analysis
+     * to {@link GitManagerExtractor}.
+     *
+     * @param datasetEntries list of dataset entries to enrich with commit metrics
+     * @return list of dataset entries enriched with Git-based metrics
+     */
+    private List<DatasetEntry> populateCommitMetrics(List<DatasetEntry> datasetEntries) {
+
+        return new GitManagerExtractor().startAnalysis(datasetEntries);
     }
 }

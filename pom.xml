@@ -13,6 +13,7 @@
         <json.version>20260522</json.version>
         <sl4j.version>1.5.34</sl4j.version>
         <ck.version>0.7.0</ck.version>
+        <jgit.version>7.7.0.202606012155-r</jgit.version>
     </properties>
     <dependencies>
         <dependency>
@@ -50,6 +51,14 @@
             <groupId>com.github.mauricioaniche</groupId>
             <artifactId>ck</artifactId>
             <version>${ck.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!--JGIT-->
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+            <version>${jgit.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

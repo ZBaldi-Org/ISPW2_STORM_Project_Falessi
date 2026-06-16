@@ -52,7 +52,7 @@ public class DatasetEntry {
     /** Number of releases since the last update/modification of the class */
     private int lastUpdateAge;
 
-    /** Total lines of code touched (modified) throughout the class's history */
+    /** Total lines of code touched (added + deleted) throughout the class's history */
     private int totalLocTouched;
 
     /** Lines of code touched in the current release */

@@ -29,7 +29,6 @@ public class GitWorktreeManager {
     public void buildWorktree(List<ReleaseInfo> releaseInfoList) {
 
         try {
-            int a = 0;
             cloneRepo();
             int i=1;
 
