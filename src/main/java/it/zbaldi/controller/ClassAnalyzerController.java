@@ -11,7 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 @Slf4j
 public class ClassAnalyzerController {
@@ -33,6 +35,13 @@ public class ClassAnalyzerController {
         }
     }
 
+    /**
+     * Executes the full extraction process by scanning dataset directories under the "storm_tags/" root,
+     * building dataset entries with CK and commit metrics, and aggregating them by release.
+     * Finally, it enriches the collected data with additional metrics.
+     * <p>
+     * Errors during the process are caught and logged without interrupting execution.
+     */
     public void executeExtractionProcess() {
 
         Map<Integer, List<DatasetEntry>> datasetEntryMap = new TreeMap<>();

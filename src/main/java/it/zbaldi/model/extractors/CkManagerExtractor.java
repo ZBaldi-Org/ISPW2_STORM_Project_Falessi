@@ -1,12 +1,20 @@
 package it.zbaldi.model.extractors;
 
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.comments.Comment;
 import com.github.mauricioaniche.ck.CK;
 import com.github.mauricioaniche.ck.CKClassResult;
 import it.zbaldi.model.DatasetEntry;
 import it.zbaldi.model.MetricExtractor;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.reflections.Reflections.log;
 
 public class CkManagerExtractor implements MetricExtractor<String, List<DatasetEntry>> {
 
@@ -26,7 +34,7 @@ public class CkManagerExtractor implements MetricExtractor<String, List<DatasetE
             DatasetEntry datasetEntry = new DatasetEntry();
             setClassPath(datasetEntry, result, marker);
             setRelease(datasetEntry, pathTag);
-            setLinesOfCode(datasetEntry, result);
+            setLinesOfCodeAndCommentDensity(datasetEntry);
             setWeightedMethods(datasetEntry, result);
             setNumberOfAttributes(datasetEntry, result);
             setFanIn(datasetEntry, result);
@@ -68,6 +76,35 @@ public class CkManagerExtractor implements MetricExtractor<String, List<DatasetE
         String version = path.substring(path.lastIndexOf("\\") + 1);
         version = version.substring(0, version.indexOf("_"));
         datasetEntry.setRelease(Integer.parseInt(version));
+    }
+
+    /**
+     * Computes the comment density of a Java file and stores it in the dataset entry.
+     * Density is defined as comment lines divided by total lines of code.
+     *
+     * @param datasetEntry dataset entry containing file path and metrics
+     */
+    private void setLinesOfCodeAndCommentDensity(DatasetEntry datasetEntry) {
+
+        try {
+            File file = new File(datasetEntry.getRelativeClassPath());
+            CompilationUnit compilationUnit = StaticJavaParser.parse(file);
+            var comments = compilationUnit.getAllContainedComments();
+            int totalLines = 0;
+            int lines;
+            long totalLocs = Files.lines(Path.of(datasetEntry.getRelativeClassPath())).filter(line -> !line.trim().isEmpty()).filter(line -> !line.trim().startsWith("//")).filter(line -> !line.trim().startsWith("/*")).count();
+
+            for (Comment c : comments) {
+                lines = c.getBegin().flatMap(begin -> c.getEnd().map(end -> end.line - begin.line + 1)).orElse(0);
+                totalLines += lines;
+            }
+            float density = (float) totalLines / totalLocs;
+            datasetEntry.setLinesOfCode((int) totalLocs);
+            datasetEntry.setCommentDensity(density);
+
+        } catch (Exception e) {
+            log.error("Error while calculating lines of code of file {} ", datasetEntry.getRelativeClassPath());
+        }
     }
 
     /**

@@ -1,16 +1,14 @@
 package it.zbaldi.model.extractors;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.comments.Comment;
 import it.zbaldi.model.DatasetEntry;
 import it.zbaldi.model.MetricExtractor;
 import lombok.extern.slf4j.Slf4j;
+import net.sourceforge.pmd.*;
 
-import java.io.File;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +16,23 @@ import java.util.Set;
 
 @Slf4j
 public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<DatasetEntry>>, Map<Integer, List<DatasetEntry>>> {
+
+    /** PMD configuration used for loading rule sets. */
+    private final PMDConfiguration CONFIGURATION = new PMDConfiguration();
+
+    /** RuleSetLoader created from the PMD configuration. */
+    private final RuleSetLoader LOADER = RuleSetLoader.fromPmdConfig(CONFIGURATION);
+
+    /** The primary PMD rule set (quickstart) loaded from resources. */
+    private final RuleSet RULESET = LOADER.loadFromResource("rulesets/java/quickstart.xml");
+
+//    private final RuleSet RULESET2 = LOADER.loadFromResource("rulesets/java/design.xml");
+//    private final RuleSet RULESET3 = LOADER.loadFromResource("category/java/bestpractices.xml");
+//    private final RuleSet RULESET4 = LOADER.loadFromResource("category/java/errorprone.xml");
+
+    /** Wrapper containing the selected rule set(s) for PMD analysis. */
+    @SuppressWarnings({"deprecation"})
+    private final RuleSets RULESETS = new RuleSets(List.of(RULESET));
 
     /**
      * Processes dataset releases by computing metrics for each release.
@@ -64,7 +79,6 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
         datasetEntry.setReleaseNumberOfCommits(datasetEntry.getTotalNumberOfCommits());
         datasetEntry.setReleaseNumberOfAuthors(datasetEntry.getTotalNumberOfAuthors());
         datasetEntry.setReleaseNumberOfFixes(datasetEntry.getTotalNumberOfFixes());
-        setCommentDensity(datasetEntry);
         setNumberOfSmells(datasetEntry);
     }
 
@@ -105,7 +119,6 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
                 else {
                     datasetEntryNew.setLastUpdateAge(datasetEntryOld.getLastUpdateAge() + 1);
                 }
-                setCommentDensity(datasetEntryNew);
                 setNumberOfSmells(datasetEntryNew);
             }
 
@@ -113,37 +126,35 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
     }
 
     /**
-     * Computes the comment density of a Java file and stores it in the dataset entry.
-     * Density is defined as comment lines divided by total lines of code.
+     * Calculates the number of PMD code smells (violations) for a given Java class
+     * and stores the result in the provided {@link DatasetEntry}.
      *
-     * @param datasetEntry dataset entry containing file path and metrics
+     * <p>The method runs a PMD analysis using multiple rule sets (quickstart, design,
+     * best practices, and error-prone) and counts all detected violations as "smells".
+     *
+     * <p>If an error occurs during analysis (e.g., file not found or parsing issue),
+     * the number of smells is set to 0 and the error is logged.
+     *
+     * @param datasetEntry the dataset entry containing the relative path of the class
+     *                     to be analyzed and where the computed smell count will be stored
      */
-    private void setCommentDensity(DatasetEntry datasetEntry) {
+    @SuppressWarnings({"deprecation"})
+    private void setNumberOfSmells(DatasetEntry datasetEntry) {
 
         try {
-            File file = new File(datasetEntry.getRelativeClassPath());
-            CompilationUnit compilationUnit = StaticJavaParser.parse(file);
-            var comments = compilationUnit.getAllContainedComments();
-            int totalLines = 0;
-            int lines;
-            long totalLocs = Files.lines(Path.of(datasetEntry.getRelativeClassPath())).filter(line -> !line.trim().isEmpty()).filter(line -> !line.trim().startsWith("//")).filter(line -> !line.trim().startsWith("/*")).count();
+            Report report = new Report();
+            RuleContext context = new RuleContext();
+            context.setReport(report);
+            SourceCodeProcessor processor = new SourceCodeProcessor(CONFIGURATION);
+            Path path = Paths.get(datasetEntry.getRelativeClassPath());
+            InputStream is = Files.newInputStream(path);
+            processor.processSourceCode(is, RULESETS, context);
+            datasetEntry.setNumberOfSmells(report.getViolations().size());
 
-            for (Comment c : comments) {
-                lines = c.getBegin().flatMap(begin -> c.getEnd().map(end -> end.line - begin.line + 1)).orElse(0);
-                totalLines += lines;
-            }
-            float density = (float) totalLines / totalLocs;
-            datasetEntry.setCommentDensity(density);
-
-        } catch (Exception e) {
-            log.error("Error while calculating comment density of file {} ", datasetEntry.getRelativeClassPath());
-            datasetEntry.setCommentDensity(0);
+        }catch (Exception e){
+            log.error("Error while calculating number of smells of file {} ", datasetEntry.getRelativeClassPath());
+            datasetEntry.setNumberOfSmells(0);
         }
-    }
-
-    private void setNumberOfSmells(DatasetEntry datasetEntry){
-
-
     }
 
     /**
