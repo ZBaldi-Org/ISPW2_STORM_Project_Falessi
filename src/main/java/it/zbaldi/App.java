@@ -11,6 +11,8 @@ import java.io.IOException;
 public class App 
 {
     public static void main( String[] args ) throws IOException {
-        new ClassAnalyzerController().prova();
+        ClassAnalyzerController controller = new ClassAnalyzerController();
+        controller.getCodeSnapshots(0.05F);
+        controller.executeExtractionProcess(0.05F);
     }
 }

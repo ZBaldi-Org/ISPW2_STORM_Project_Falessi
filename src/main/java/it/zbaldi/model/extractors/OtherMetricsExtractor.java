@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<DatasetEntry>>, Map<Integer, List<DatasetEntry>>> {
+public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<DatasetEntry>>, Void> {
 
     /** PMD configuration used for loading rule sets. */
     private final PMDConfiguration CONFIGURATION = new PMDConfiguration();
@@ -41,7 +41,7 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
      * @return the updated map with computed metrics for all releases
      */
     @Override
-    public Map<Integer, List<DatasetEntry>> startAnalysis(Map<Integer, List<DatasetEntry>> map) {
+    public Void startAnalysis(Map<Integer, List<DatasetEntry>> map) {
 
         map.keySet().forEach(i -> {
 
@@ -52,7 +52,8 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
                 setOtherMetrics(map.get(i - 1), map.get(i));
             }
         });
-        return map;
+        log.info("Finished Calculating Other Metrics");
+        return null;
     }
 
     /**
@@ -72,6 +73,7 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
      */
     private void setNewClassOtherMetrics(DatasetEntry datasetEntry) {
 
+        log.info("Calculating Other Metrics For: {}", datasetEntry.getClassPath());
         datasetEntry.setCreationAge(1);
         datasetEntry.setLastUpdateAge(0);
         datasetEntry.setReleaseLocTouched(datasetEntry.getTotalLocTouched());
@@ -101,6 +103,7 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
                 setNewClassOtherMetrics(datasetEntryNew);
             }
             else {
+                log.info("Calculating Other Metrics For: {}", datasetEntryNew.getClassPath());
                 datasetEntryNew.setCreationAge(datasetEntryOld.getCreationAge() + 1);
                 datasetEntryNew.setReleaseLocTouched(datasetEntryNew.getTotalLocTouched() - datasetEntryOld.getTotalLocTouched());
                 float normalizedReleaseChurn = (float) datasetEntryNew.getReleaseLocTouched() / datasetEntryNew.getLinesOfCode();

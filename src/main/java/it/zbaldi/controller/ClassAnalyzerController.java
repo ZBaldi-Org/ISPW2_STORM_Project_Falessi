@@ -37,7 +37,7 @@ public class ClassAnalyzerController {
      * <p>
      * Errors during the process are caught and logged without interrupting execution.
      */
-    public void executeExtractionProcess() {
+    public void executeExtractionProcess(float keepPercentage) {
 
         Map<Integer, List<DatasetEntry>> datasetEntryMap = new TreeMap<>();
         Path root = Path.of("storm_tags/");
@@ -54,11 +54,10 @@ public class ClassAnalyzerController {
                 datasetEntryMap.put(datasetEntries.getFirst().getRelease(), datasetEntries);
             }
             populateOtherMetrics(datasetEntryMap);
-            Map<FixedBuggyTicket, Set<String>> linkedTickets = bindCommitsToTickets(getJiraTickets());
-            //APPLICARE PROPORTION O NO
+            Map<FixedBuggyTicket, Set<String>> linkedTickets = bindCommitsToTickets(getJiraTickets(keepPercentage));
+            startLabeling(linkedTickets, datasetEntryMap);
 
         } catch (Exception e) {
-
             log.error("Error executing extraction process, error message: {}", e.getMessage());
         }
     }
@@ -96,24 +95,36 @@ public class ClassAnalyzerController {
      * Delegates the analysis to {@link OtherMetricsExtractor} and returns the updated dataset.
      *
      * @param datasetEntries map of dataset entries grouped by key (e.g., commit or version)
-     * @return updated map containing computed commit metrics
      */
-    private Map<Integer, List<DatasetEntry>> populateOtherMetrics(Map<Integer, List<DatasetEntry>> datasetEntries) {
+    private void populateOtherMetrics(Map<Integer, List<DatasetEntry>> datasetEntries) {
 
-        MetricExtractor<Map<Integer, List<DatasetEntry>>, Map<Integer, List<DatasetEntry>>> metricExtractor = new OtherMetricsExtractor();
-        return metricExtractor.startAnalysis(datasetEntries);
+        MetricExtractor<Map<Integer, List<DatasetEntry>>, Void> metricExtractor = new OtherMetricsExtractor();
+        metricExtractor.startAnalysis(datasetEntries);
     }
 
     /**
      * Retrieves Jira tickets and filters out invalid ones (missing fix version or migrated data).
      */
-    private List<FixedBuggyTicket> getJiraTickets() {
+    private List<FixedBuggyTicket> getJiraTickets(float keepPercentage) {
 
-        List<FixedBuggyTicket> tickets = new TicketSearcher().getJiraFixedBuggyTickets(new ReleaseInfoSearcher().getJiraReleases());
-        tickets.removeIf(fix -> fix.getFixVersion().equals("NOT FOUND") || fix.getOpeningVersion().equals("DATA MIGRATED"));
-        return tickets;
+        List<ReleaseInfo> releases = new ReleaseInfoSearcher().getJiraReleases();
+        int sizeToKeep = (int) (releases.size() * keepPercentage);
+
+        if (sizeToKeep > 0 && sizeToKeep < releases.size()) {
+            List<FixedBuggyTicket> tickets = new TicketSearcher().getJiraFixedBuggyTickets(releases.subList(0, sizeToKeep));
+            tickets.removeIf(fix -> fix.getFixVersion().equals("NOT FOUND") || fix.getOpeningVersion().equals("DATA MIGRATED"));
+            return tickets;
+        }
+        return Collections.emptyList();
     }
 
+    /**
+     * Links each ticket to the set of Java classes modified by commits associated with its key.
+     * Only tickets with at least one related class change are included in the result.
+     *
+     * @param tickets list of fixed/buggy tickets to process
+     * @return map of tickets to the set of touched classes for matching commits
+     */
     private Map<FixedBuggyTicket, Set<String>> bindCommitsToTickets(List<FixedBuggyTicket> tickets) {
 
         Map<FixedBuggyTicket, Set<String>> linkedCommits = new HashMap<>();
@@ -128,10 +139,34 @@ public class ClassAnalyzerController {
         return linkedCommits;
     }
 
-    public void prova(){
+    /**
+     * Labels dataset entries as buggy based on the affected and fix versions of each ticket.
+     * For each ticket, all dataset entries in the version range [affected, fix) are marked as buggy.
+     *
+     * @param linkedClassesMap map of tickets associated with their linked classes
+     * @param datasetEntryMap  map of release versions to dataset entries
+     */
+    private void startLabeling(Map<FixedBuggyTicket, Set<String>> linkedClassesMap, Map<Integer, List<DatasetEntry>> datasetEntryMap){
 
-        getCodeSnapshots(0.05F);
-        Map<FixedBuggyTicket, Set<String>> linkedTickets = bindCommitsToTickets(getJiraTickets());
-        int a = 0;
+        linkedClassesMap.forEach((key, value) -> {
+
+            if(!key.getAffectedVersion().equals("NOT FOUND")){
+
+                if ((LocalCache.getReleaseValue(key.getAffectedVersion()) != null) && (LocalCache.getReleaseValue(key.getFixVersion()) != null)) {
+                    int affected = LocalCache.getReleaseValue(key.getAffectedVersion());
+                    int fix = LocalCache.getReleaseValue(key.getFixVersion());
+
+                    for (; affected < fix; affected++) {
+                        List<DatasetEntry> datasetEntries = datasetEntryMap.get(affected);
+                        datasetEntries.forEach(datasetEntry -> {
+                            datasetEntry.setBuggy(true);
+                        });
+                    }
+                }
+            }
+            else{
+                //apply proportion
+            }
+        });
     }
 }

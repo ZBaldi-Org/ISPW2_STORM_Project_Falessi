@@ -31,6 +31,7 @@ public class CkManagerExtractor implements MetricExtractor<String, List<DatasetE
         String marker = pathTag + "\\";
 
         new CK().calculate(pathTag, result -> {
+            log.info("Setting Ck Metrics");
             DatasetEntry datasetEntry = new DatasetEntry();
             setClassPath(datasetEntry, result, marker);
             setRelease(datasetEntry, pathTag);
@@ -44,6 +45,7 @@ public class CkManagerExtractor implements MetricExtractor<String, List<DatasetE
             setResponseForClass(datasetEntry, result);
             datasetEntries.add(datasetEntry);
         });
+        log.info("Finished Setting Ck Metrics");
         return datasetEntries;
     }
 

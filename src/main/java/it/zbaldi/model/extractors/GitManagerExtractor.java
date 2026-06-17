@@ -48,12 +48,14 @@ public class GitManagerExtractor implements MetricExtractor<List<DatasetEntry>, 
         try (Git git = Git.open(repoDir)) {
 
             for (DatasetEntry entry : datasetEntries) {
+                log.info("Calculating Commit Metrics for; {}", entry.getClassPath());
                 List<RevCommit> commits = getClassCommits(git, entry);
                 setTotalLocTouchedAndAverageCommitChangeDensityAndNormalizedTotalChurn(entry);
                 setTotalNumberOfCommits(entry, commits);
                 setTotalNumberOfAuthors(entry, commits);
                 setTotalNumberOfFixes(entry, commits);
             }
+            log.info("Finished Calculating Commit Metrics");
 
         } catch (GitException e) {
             log.error(e.getMessage());

@@ -1,16 +1,15 @@
 package it.zbaldi.model;
 
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.revwalk.RevCommit;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 public class GitWorktreeManager {
@@ -112,6 +111,7 @@ public class GitWorktreeManager {
 
     public Set<String> getClassesTouchedByALinkedCommits(String id) {
 
+        log.info("Getting classes touched by a linked commit {}", id);
         int release = LocalCache.getReleaseSize();
         Path path = Paths.get(System.getProperty("user.dir"));
         Path targetDir = path.resolve("storm_tags").resolve(release + "_" + PROJECT_NAME + "_" + LocalCache.getReleaseKey(release));
@@ -143,12 +143,12 @@ public class GitWorktreeManager {
         );
         pb.directory(processPath.toFile());
         Process process = pb.start();
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int exitCode = process.waitFor();
 
         if (exitCode != 0) {
             throw new GitException("Error retrieving classes touched by commits with tag: " + id);
         }
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         Set<String> classes = new HashSet<>();
 
         for (String line : output.split("\n")) {
@@ -162,6 +162,7 @@ public class GitWorktreeManager {
                 classes.add(line);
             }
         }
+        log.info("Got {} classes touched by commits with tag {}", classes.size(), id);
         return classes;
     }
 }

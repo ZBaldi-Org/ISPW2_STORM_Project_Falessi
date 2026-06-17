@@ -25,7 +25,7 @@ public class LocalCache {
      * @param key the string key whose associated value is to be returned
      * @return the value to which the specified key is mapped, or null if this map contains no mapping for the key
      */
-    public static int getReleaseValue(String key) {
+    public static Integer getReleaseValue(String key) {
         return releasesMap.get(key);
     }
 

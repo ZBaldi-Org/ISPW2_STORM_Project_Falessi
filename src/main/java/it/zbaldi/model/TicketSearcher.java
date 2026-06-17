@@ -10,7 +10,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 public class TicketSearcher {
@@ -105,6 +107,16 @@ public class TicketSearcher {
                 }
                 startAt += issues.length();
             } while (startAt < total);
+            Set<String> availableVersions = new HashSet<>();
+
+            for(ReleaseInfo releaseInfo : releaseInfos){
+                availableVersions.add(releaseInfo.getReleaseName());
+            }
+
+            fixedBuggyTickets.removeIf(ticket -> (!"NOT FOUND".equals(ticket.getAffectedVersion())
+                            && !availableVersions.contains(ticket.getAffectedVersion()))
+                            || (!"NOT FOUND".equals(ticket.getFixVersion())
+                            && !availableVersions.contains(ticket.getFixVersion())));
             return fixedBuggyTickets;
 
         }catch (Exception e){
