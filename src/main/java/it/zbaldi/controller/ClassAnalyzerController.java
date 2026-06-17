@@ -6,9 +6,14 @@ import it.zbaldi.model.ReleaseInfo;
 import it.zbaldi.model.ReleaseInfoSearcher;
 import it.zbaldi.model.extractors.CkManagerExtractor;
 import it.zbaldi.model.extractors.GitManagerExtractor;
+import it.zbaldi.model.extractors.OtherMetricsExtractor;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
 
+@Slf4j
 public class ClassAnalyzerController {
 
     /**
@@ -28,8 +33,28 @@ public class ClassAnalyzerController {
         }
     }
 
-    public void prova() {
-        new GitManagerExtractor().startAnalysis(new CkManagerExtractor().startAnalysis("storm_tags\\1_storm_0.9.0.1"));
+    public void executeExtractionProcess() {
+
+        Map<Integer, List<DatasetEntry>> datasetEntryMap = new TreeMap<>();
+        Path root = Path.of("storm_tags/");
+
+        try (var stream = Files.list(root)) {
+
+            for (Path directory : (Iterable<Path>) stream::iterator) {
+
+                if (!Files.isDirectory(directory)) {
+                    continue;
+                }
+                List<DatasetEntry> datasetEntries = populateCkMetrics(directory.toString());
+                datasetEntries = populateCommitMetrics(datasetEntries);
+                datasetEntryMap.put(datasetEntries.getFirst().getRelease(), datasetEntries);
+            }
+            populateOtherMetrics(datasetEntryMap);
+
+        } catch (Exception e) {
+
+            log.error("Error executing extraction process, error message: {}", e.getMessage());
+        }
     }
 
     /**
@@ -56,5 +81,17 @@ public class ClassAnalyzerController {
     private List<DatasetEntry> populateCommitMetrics(List<DatasetEntry> datasetEntries) {
 
         return new GitManagerExtractor().startAnalysis(datasetEntries);
+    }
+
+    /**
+     * Enriches dataset entries with other related metrics.
+     * Delegates the analysis to {@link OtherMetricsExtractor} and returns the updated dataset.
+     *
+     * @param datasetEntries map of dataset entries grouped by key (e.g., commit or version)
+     * @return updated map containing computed commit metrics
+     */
+    private Map<Integer, List<DatasetEntry>> populateOtherMetrics(Map<Integer, List<DatasetEntry>> datasetEntries) {
+
+        return new OtherMetricsExtractor().startAnalysis(datasetEntries);
     }
 }

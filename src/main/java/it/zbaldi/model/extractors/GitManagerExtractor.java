@@ -184,11 +184,14 @@ public class GitManagerExtractor implements MetricExtractor<List<DatasetEntry>, 
     private void setTotalNumberOfAuthors(DatasetEntry datasetEntry, List<RevCommit> commits) {
 
         Set<String> authors = new HashSet<>();
+        List<String> authorsHistory = new ArrayList<>();
         for (RevCommit commit : commits) {
             String author = commit.getAuthorIdent().getName();
             authors.add(author);
+            authorsHistory.add(author);
         }
         datasetEntry.setTotalNumberOfAuthors(authors.size());
+        datasetEntry.setAuthorsHistoryList(authorsHistory);
     }
 
     /**

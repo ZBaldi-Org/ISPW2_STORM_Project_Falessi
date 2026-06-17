@@ -3,6 +3,8 @@ package it.zbaldi.model;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Setter
 @Getter
 public class DatasetEntry {
@@ -72,6 +74,9 @@ public class DatasetEntry {
 
     /** Total number of distinct authors who have contributed to this class */
     private int totalNumberOfAuthors;
+
+    /** This is used to calculate the releaseNumberOfAuthors */
+    private List<String> authorsHistoryList;
 
     /** Number of distinct authors who have contributed in the current release */
     private int releaseNumberOfAuthors;
