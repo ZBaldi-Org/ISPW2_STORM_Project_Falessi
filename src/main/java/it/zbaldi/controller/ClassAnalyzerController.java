@@ -1,9 +1,6 @@
 package it.zbaldi.controller;
 
-import it.zbaldi.model.DatasetEntry;
-import it.zbaldi.model.GitWorktreeManager;
-import it.zbaldi.model.ReleaseInfo;
-import it.zbaldi.model.ReleaseInfoSearcher;
+import it.zbaldi.model.*;
 import it.zbaldi.model.extractors.CkManagerExtractor;
 import it.zbaldi.model.extractors.GitManagerExtractor;
 import it.zbaldi.model.extractors.OtherMetricsExtractor;
@@ -77,7 +74,8 @@ public class ClassAnalyzerController {
      */
     private List<DatasetEntry> populateCkMetrics(String releasePath) {
 
-        return new CkManagerExtractor().startAnalysis(releasePath);
+        MetricExtractor<String, List<DatasetEntry>> metricExtractor = new CkManagerExtractor();
+        return metricExtractor.startAnalysis(releasePath);
     }
 
     /**
@@ -89,7 +87,8 @@ public class ClassAnalyzerController {
      */
     private List<DatasetEntry> populateCommitMetrics(List<DatasetEntry> datasetEntries) {
 
-        return new GitManagerExtractor().startAnalysis(datasetEntries);
+        MetricExtractor<List<DatasetEntry>, List<DatasetEntry>> metricExtractor = new GitManagerExtractor();
+        return metricExtractor.startAnalysis(datasetEntries);
     }
 
     /**
@@ -101,6 +100,16 @@ public class ClassAnalyzerController {
      */
     private Map<Integer, List<DatasetEntry>> populateOtherMetrics(Map<Integer, List<DatasetEntry>> datasetEntries) {
 
-        return new OtherMetricsExtractor().startAnalysis(datasetEntries);
+        MetricExtractor<Map<Integer, List<DatasetEntry>>, Map<Integer, List<DatasetEntry>>> metricExtractor = new OtherMetricsExtractor();
+        return metricExtractor.startAnalysis(datasetEntries);
+    }
+
+    /**
+     * Retrieves Jira tickets and filters out invalid ones (missing fix version or migrated data).
+     */
+    private void getJiraTickets() {
+
+        List<FixedBuggyTicket> tickets = new TicketSearcher().getJiraFixedBuggyTickets(new ReleaseInfoSearcher().getJiraReleases());
+        tickets.removeIf(fix -> fix.getFixVersion().equals("NOT FOUND") || fix.getOpeningVersion().equals("DATA MIGRATED"));
     }
 }

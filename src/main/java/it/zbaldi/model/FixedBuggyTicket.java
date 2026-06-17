@@ -1,16 +1,16 @@
 package it.zbaldi.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDate;
-
 @Setter
 @Getter
-public class BugFixedTicket {
+@AllArgsConstructor
+public class FixedBuggyTicket {
 
     /** Unique identifier of the entity (e.g., issue, class, or record). */
-    private String id;
+    private String key;
 
     /** Version in which the fix was introduced or released. */
     private String fixVersion;
@@ -20,7 +20,4 @@ public class BugFixedTicket {
 
     /** Version in which the issue was discovered (opening version). */
     private String openingVersion;
-
-    /** Date when the entity was created. */
-    private LocalDate creationDate;
 }
