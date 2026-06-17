@@ -8,9 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 @Slf4j
 public class ClassAnalyzerController {
@@ -56,6 +54,8 @@ public class ClassAnalyzerController {
                 datasetEntryMap.put(datasetEntries.getFirst().getRelease(), datasetEntries);
             }
             populateOtherMetrics(datasetEntryMap);
+            Map<FixedBuggyTicket, Set<String>> linkedTickets = bindCommitsToTickets(getJiraTickets());
+            //APPLICARE PROPORTION O NO
 
         } catch (Exception e) {
 
@@ -107,9 +107,31 @@ public class ClassAnalyzerController {
     /**
      * Retrieves Jira tickets and filters out invalid ones (missing fix version or migrated data).
      */
-    private void getJiraTickets() {
+    private List<FixedBuggyTicket> getJiraTickets() {
 
         List<FixedBuggyTicket> tickets = new TicketSearcher().getJiraFixedBuggyTickets(new ReleaseInfoSearcher().getJiraReleases());
         tickets.removeIf(fix -> fix.getFixVersion().equals("NOT FOUND") || fix.getOpeningVersion().equals("DATA MIGRATED"));
+        return tickets;
+    }
+
+    private Map<FixedBuggyTicket, Set<String>> bindCommitsToTickets(List<FixedBuggyTicket> tickets) {
+
+        Map<FixedBuggyTicket, Set<String>> linkedCommits = new HashMap<>();
+
+        for (FixedBuggyTicket ticket : tickets) {
+            Set<String> classes = new GitWorktreeManager().getClassesTouchedByALinkedCommits(ticket.getKey());
+
+            if(!classes.isEmpty()){
+                linkedCommits.put(ticket, classes);;
+            }
+        }
+        return linkedCommits;
+    }
+
+    public void prova(){
+
+        getCodeSnapshots(0.05F);
+        Map<FixedBuggyTicket, Set<String>> linkedTickets = bindCommitsToTickets(getJiraTickets());
+        int a = 0;
     }
 }

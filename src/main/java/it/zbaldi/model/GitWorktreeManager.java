@@ -1,11 +1,16 @@
 package it.zbaldi.model;
 
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.revwalk.RevCommit;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
+import java.util.*;
 
 @Slf4j
 public class GitWorktreeManager {
@@ -33,6 +38,7 @@ public class GitWorktreeManager {
             int i=1;
 
             for (ReleaseInfo releaseInfo : releaseInfoList) {
+                LocalCache.addRelease(releaseInfo.getReleaseName(), i);
 
                 try {
                     createSnapshot(releaseInfo.getReleaseName(), i);
@@ -85,8 +91,6 @@ public class GitWorktreeManager {
      */
     private void createSnapshot(String tag, int order) throws Exception {
 
-        System.out.println(tag);
-
         Path path = Paths.get(System.getProperty("user.dir"));
         Path targetDir = path.resolve("storm_tags").resolve(order + "_" + PROJECT_NAME + "_" + tag);
         ProcessBuilder pb = new ProcessBuilder("git", "worktree", "add", targetDir.toString(), tag);
@@ -104,5 +108,60 @@ public class GitWorktreeManager {
                 throw new Exception("Error creating worktree for tag: " + tag);
             }
         }
+    }
+
+    public Set<String> getClassesTouchedByALinkedCommits(String id) {
+
+        int release = LocalCache.getReleaseSize();
+        Path path = Paths.get(System.getProperty("user.dir"));
+        Path targetDir = path.resolve("storm_tags").resolve(release + "_" + PROJECT_NAME + "_" + LocalCache.getReleaseKey(release));
+
+        if (!Files.exists(targetDir)) {
+            targetDir = path.resolve("storm_tags").resolve(release + "_" + PROJECT_NAME + "_v" + LocalCache.getReleaseKey(release));
+        }
+
+        try {
+            return getAllClasses(id, targetDir.toString());
+
+        } catch (Exception e) {
+            log.error(e.getMessage());
+            return  Collections.emptySet();
+        }
+    }
+
+    private Set<String> getAllClasses(String id, String targetDir) throws Exception {
+
+        Path processPath = Paths.get(targetDir).toAbsolutePath().normalize();
+
+        ProcessBuilder pb = new ProcessBuilder(
+                "git", "log",
+                "--all",
+                "-i",
+                "--grep=" + id,
+                "--name-only",
+                "--pretty=format:"
+        );
+        pb.directory(processPath.toFile());
+        Process process = pb.start();
+        int exitCode = process.waitFor();
+
+        if (exitCode != 0) {
+            throw new GitException("Error retrieving classes touched by commits with tag: " + id);
+        }
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        Set<String> classes = new HashSet<>();
+
+        for (String line : output.split("\n")) {
+            line = line.trim();
+
+            if (line.isBlank()) {
+                continue;
+            }
+
+            if (line.endsWith(".java")) {
+                classes.add(line);
+            }
+        }
+        return classes;
     }
 }
