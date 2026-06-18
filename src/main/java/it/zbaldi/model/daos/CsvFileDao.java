@@ -14,7 +14,7 @@ import java.util.Map;
 public class CsvFileDao implements DatasetDao<Map<Integer, List<DatasetEntry>>> {
 
     /**
-     * Saves dataset entries into a CSV file in append mode.
+     * Saves dataset entries into a CSV file.
      * <p>
      * Iterates over all {@link DatasetEntry} objects in the provided map
      * and writes them as rows in "dataset.csv".
@@ -25,8 +25,38 @@ public class CsvFileDao implements DatasetDao<Map<Integer, List<DatasetEntry>>> 
     public void save(Map<Integer, List<DatasetEntry>> data) {
 
         log.info("Saving data to file dataset.csv");
+
         try (FileWriter out = new FileWriter("dataset.csv", false);
              CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT)) {
+            printer.printRecord(
+                    "class",
+                    "release",
+                    "loc",
+                    "comment density",
+                    "wcm",
+                    "number of attributes",
+                    "fan-in",
+                    "fan-out",
+                    "cbo",
+                    "normalized lcom",
+                    "rfc",
+                    "creation age",
+                    "last update age",
+                    "total loc touched",
+                    "release loc touched",
+                    "normalized total churn",
+                    "normalized release churn",
+                    "total number of commits",
+                    "release number of commits",
+                    "total number of authors",
+                    "release number of authors",
+                    "total number of fixes",
+                    "release number of fixes",
+                    "average commit change density",
+                    "number of smells",
+                    "buggy"
+
+            );
 
             for (List<DatasetEntry> datasetEntryList : data.values()) {
 

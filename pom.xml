@@ -17,6 +17,8 @@
         <java_parser.version>3.28.2</java_parser.version>
         <pmd.version>6.55.0</pmd.version>
         <csv.version>1.14.1</csv.version>
+        <commons-io>2.22.0</commons-io>
+        <weka-version>3.8.6</weka-version>
     </properties>
     <dependencies>
         <dependency>
@@ -87,6 +89,18 @@
             <artifactId>commons-csv</artifactId>
             <version>${csv.version}</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io}</version>
+        </dependency>
+
+        <!--WEKA-->
+        <dependency>
+            <groupId>nz.ac.waikato.cms.weka</groupId>
+            <artifactId>weka-stable</artifactId>
+            <version>${weka-version}</version>
         </dependency>
     </dependencies>
 </project>

@@ -1,6 +1,7 @@
 package it.zbaldi.view;
 
 import it.zbaldi.controller.ClassAnalyzerController;
+import it.zbaldi.controller.MachineLearningController;
 
 import java.util.Scanner;
 
@@ -8,6 +9,9 @@ public class ConsoleView implements GenericView {
 
     /** Controller for analyzing classes. */
     private final ClassAnalyzerController classAnalyzerController = new ClassAnalyzerController();
+
+    /** Controller for ML analysis. */
+    private final MachineLearningController machineLearningController = new MachineLearningController();
 
     /**
      * Starts the console view application loop.
@@ -32,7 +36,8 @@ public class ConsoleView implements GenericView {
         System.out.println("--------STORM PROJECT ANALYZER--------");
         System.out.println("Select one option:");
         System.out.println("1) Start Project Analysis");
-        System.out.println("2) Exit");
+        System.out.println("2) Start ML Analysis");
+        System.out.println("3) Exit");
     }
 
     /**
@@ -47,10 +52,13 @@ public class ConsoleView implements GenericView {
 
             switch (input) {
                 case 1:
-                    classAnalyzerController.getCodeSnapshots(0.25F);
+                    classAnalyzerController.getCodeSnapshots(0.3F);
                     classAnalyzerController.executeExtractionProcess();
                     return false;
                 case 2:
+                    machineLearningController.executeProcess();
+                    return false;
+                case 3:
                     return true;
                 default:
                     System.out.println("Invalid option");

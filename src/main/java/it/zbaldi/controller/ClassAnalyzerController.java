@@ -61,7 +61,7 @@ public class ClassAnalyzerController {
             dao.save(datasetEntryMap);
 
         } catch (Exception e) {
-            log.error("Error executing extraction process, error message: {}", e.getMessage());
+            log.error("Error executing extraction process\n Error message: {}\n Stacktrace: ", e.getMessage(), e);
         }
     }
 

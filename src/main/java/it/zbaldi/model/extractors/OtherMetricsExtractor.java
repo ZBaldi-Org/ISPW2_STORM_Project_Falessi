@@ -105,16 +105,26 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
             else {
                 log.info("Calculating Other Metrics For: {}", datasetEntryNew.getClassPath());
                 datasetEntryNew.setCreationAge(datasetEntryOld.getCreationAge() + 1);
-                datasetEntryNew.setReleaseLocTouched(datasetEntryNew.getTotalLocTouched() - datasetEntryOld.getTotalLocTouched());
+                datasetEntryNew.setReleaseLocTouched(Math.max(datasetEntryNew.getTotalLocTouched() - datasetEntryOld.getTotalLocTouched(), 0));
                 float normalizedReleaseChurn = (float) datasetEntryNew.getReleaseLocTouched() / datasetEntryNew.getLinesOfCode();
                 datasetEntryNew.setNormalizedReleaseChurn(normalizedReleaseChurn);
-                datasetEntryNew.setReleaseNumberOfCommits(datasetEntryNew.getTotalNumberOfCommits() - datasetEntryOld.getTotalNumberOfCommits());
+                datasetEntryNew.setReleaseNumberOfCommits(Math.max(datasetEntryNew.getTotalNumberOfCommits() - datasetEntryOld.getTotalNumberOfCommits(), 0));
                 List<String> authorsHistoryNew = datasetEntryNew.getAuthorsHistoryList();
                 List<String> authorsHistoryOld = datasetEntryOld.getAuthorsHistoryList();
-                List<String> subAuthorsList = authorsHistoryNew.subList(authorsHistoryOld.size(), authorsHistoryNew.size());
-                Set<String> releaseAuthors = new HashSet<>(subAuthorsList);
+                Set<String> releaseAuthors;
+
+                if(authorsHistoryOld.size() <= authorsHistoryNew.size()){
+                    List<String> subAuthorsList = authorsHistoryNew.subList(authorsHistoryOld.size(), authorsHistoryNew.size());
+                    releaseAuthors = new HashSet<>(subAuthorsList);
+                }
+                else{ //IF NEW < OLD COMMIT HISTORY CORRUPTED, SEE ONLY THE DIFFERENCE OF AUTHORS AND ASSIGN THAT
+                    Set<String> authorsHistoryNewSet = new HashSet<>(authorsHistoryNew);
+                    Set<String> authorsHistoryOldSet = new HashSet<>(authorsHistoryOld);
+                    authorsHistoryNewSet.removeAll(authorsHistoryOldSet);
+                    releaseAuthors = new HashSet<>(authorsHistoryNewSet);
+                }
                 datasetEntryNew.setReleaseNumberOfAuthors(releaseAuthors.size());
-                datasetEntryNew.setReleaseNumberOfFixes(datasetEntryNew.getTotalNumberOfFixes() - datasetEntryOld.getTotalNumberOfFixes());
+                datasetEntryNew.setReleaseNumberOfFixes(Math.max(datasetEntryNew.getTotalNumberOfFixes() - datasetEntryOld.getTotalNumberOfFixes(), 0));
 
                 if (datasetEntryNew.getReleaseLocTouched() > 0) {
                     datasetEntryNew.setLastUpdateAge(0);
