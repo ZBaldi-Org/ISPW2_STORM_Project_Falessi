@@ -1,7 +1,6 @@
 package it.zbaldi.model.daos;
 
-import it.zbaldi.model.DatasetDao;
-import it.zbaldi.model.MlDatasetEntry;
+import it.zbaldi.model.interfaces.DatasetDao;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;

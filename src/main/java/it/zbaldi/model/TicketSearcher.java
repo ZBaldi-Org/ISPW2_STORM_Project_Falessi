@@ -1,5 +1,7 @@
 package it.zbaldi.model;
 
+import it.zbaldi.model.data.FixedBuggyTicket;
+import it.zbaldi.model.data.ReleaseInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,7 +22,6 @@ public class TicketSearcher {
 
     /** Jira REST API endpoint to retrieve project versions. */
     private final String URL = "https://issues.apache.org/jira/rest/api/2/search?jql=project=%22" + PROJECT_NAME + "%22AND%22issueType%22=%22Bug%22AND(%22status%22=%22closed%22OR" + "%22status%22=%22resolved%22)AND%22resolution%22=%22fixed%22&fields=key,resolutiondate,versions,fixVersions,created&startAt=";
-
 
     /**
      * Retrieves Jira issues and maps them to a list of {@link FixedBuggyTicket}.

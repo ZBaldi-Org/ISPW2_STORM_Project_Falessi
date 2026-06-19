@@ -1,4 +1,4 @@
-package it.zbaldi.model;
+package it.zbaldi.model.interfaces;
 
 public interface MetricExtractor<X,T> {
 

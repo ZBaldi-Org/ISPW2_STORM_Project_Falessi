@@ -1,4 +1,4 @@
-package it.zbaldi.model;
+package it.zbaldi.model.data;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

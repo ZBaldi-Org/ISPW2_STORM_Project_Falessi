@@ -1,8 +1,8 @@
 package it.zbaldi.model.extractors;
 
-import it.zbaldi.model.DatasetEntry;
 import it.zbaldi.model.GitException;
-import it.zbaldi.model.MetricExtractor;
+import it.zbaldi.model.data.DatasetEntry;
+import it.zbaldi.model.interfaces.MetricExtractor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;

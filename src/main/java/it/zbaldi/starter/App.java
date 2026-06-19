@@ -1,4 +1,4 @@
-package it.zbaldi;
+package it.zbaldi.starter;
 
 import it.zbaldi.view.ConsoleView;
 import it.zbaldi.view.GenericView;

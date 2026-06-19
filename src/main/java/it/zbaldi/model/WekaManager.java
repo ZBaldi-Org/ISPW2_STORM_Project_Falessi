@@ -1,5 +1,6 @@
 package it.zbaldi.model;
 
+import it.zbaldi.model.data.MlDatasetEntry;
 import it.zbaldi.model.enums.MlModel;
 import lombok.extern.slf4j.Slf4j;
 import weka.attributeSelection.AttributeSelection;
@@ -18,14 +19,33 @@ import weka.filters.supervised.instance.Resample;
 import weka.filters.supervised.instance.SpreadSubsample;
 import weka.filters.unsupervised.attribute.Normalize;
 
+import java.io.File;
 import java.util.*;
 
 @Slf4j
 public class WekaManager {
 
+    /**
+     * Runs a Weka machine learning evaluation pipeline on the dataset using multiple classifiers
+     * (RandomForest, NaiveBayes, IBk) with 10x10 cross-validation.
+     * <p>
+     * The method optionally applies feature selection (CFS + BestFirst) and data balancing
+     * (undersampling + oversampling). It computes and averages standard classification metrics:
+     * accuracy, precision, recall, F1-score, AUC, and kappa.
+     *
+     * @param featureSelectionFlag if true, applies CFS feature selection before training
+     * @param balancingFlag        if true, applies hybrid balancing (SpreadSubsample + Resample)
+     * @return list of evaluation results for each model
+     */
     public List<MlDatasetEntry> startAnalysis(boolean featureSelectionFlag, boolean balancingFlag) {
 
         try{
+            log.info("Starting Weka Analysis ...");
+            File file = new File("dataset.csv");
+
+            if (!file.exists() && !file.isFile()) {
+                throw  new Exception("Dataset file does not exist or is not a file.");
+            }
             DataSource source = new DataSource("dataset.csv");
             Instances data = source.getDataSet();
             data.deleteAttributeAt(1);
@@ -102,10 +122,11 @@ public class WekaManager {
                 averageKappa = sumKappa / 100;
                 results.add(new MlDatasetEntry(model.getClass().getSimpleName(), featureSelectionFlag, balancingFlag, averageAccuracy, averagePrecision, averageRecall, averageF1, averageAuc, averageKappa));
             }
+            log.info("Finished Weka Analysis ...");
             return results;
 
         }catch (Exception e){
-            log.error("Error Using ML Models On The Dataset");
+            log.error("Error Using ML Models On The Dataset, Message: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -119,6 +140,12 @@ public class WekaManager {
     public Map<String, int[]> startWhatIfScenario(MlModel mlModel){
 
         try{
+            log.info("Starting What-If Analysis ...");
+            File file = new File("dataset.csv");
+
+            if (!file.exists() && !file.isFile()) {
+                throw  new Exception("Dataset file does not exist or is not a file.");
+            }
             DataSource source = new DataSource("dataset.csv");
             Instances a = source.getDataSet();
             a.deleteAttributeAt(1);
@@ -158,20 +185,27 @@ public class WekaManager {
             Evaluation eval = new Evaluation(a);
 
             for(Map.Entry<String, Instances> entry : map.entrySet()) {
-                eval.evaluateModel(bestClassifier, entry.getValue());
-                double[][] cm = eval.confusionMatrix();
-                double tn = cm[0][0];
-                double fp = cm[0][1];
-                double fn = cm[1][0];
-                double tp = cm[1][1];
-                int actualPositives = (int) (fn + tp);
-                int predictedPositives = (int) (fp + tp);
-                results.put(entry.getKey(), new int[]{actualPositives, predictedPositives});
+
+                if(entry.getValue().numInstances() > 0) {
+                    eval.evaluateModel(bestClassifier, entry.getValue());
+                    double[][] cm = eval.confusionMatrix();
+                    double tn = cm[0][0];
+                    double fp = cm[0][1];
+                    double fn = cm[1][0];
+                    double tp = cm[1][1];
+                    int actualPositives = (int) (fn + tp);
+                    int predictedPositives = (int) (fp + tp);
+                    results.put(entry.getKey(), new int[]{actualPositives, predictedPositives});
+                }
+                else{
+                    results.put(entry.getKey(), new int[]{0, 0});
+                }
             }
+            log.info("Finished What-If Analysis ...");
             return results;
 
         }catch (Exception e){
-            log.error("Error Doing WhatIfScenario, message: {}", e.getMessage());
+            log.error("Error Doing WhatIfScenario, Message: {}", e.getMessage());
             return Collections.emptyMap();
         }
     }

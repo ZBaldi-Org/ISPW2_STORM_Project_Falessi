@@ -1,11 +1,11 @@
 package it.zbaldi.controller;
 
-import it.zbaldi.model.DatasetDao;
-import it.zbaldi.model.MlDatasetEntry;
 import it.zbaldi.model.WekaManager;
 import it.zbaldi.model.daos.CsvMlDao;
 import it.zbaldi.model.daos.CsvWhatIfDao;
+import it.zbaldi.model.data.MlDatasetEntry;
 import it.zbaldi.model.enums.MlModel;
+import it.zbaldi.model.interfaces.DatasetDao;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,6 +34,10 @@ public class MachineLearningController {
 
         for(boolean[] bools : combinations){
             List<MlDatasetEntry> list = wekaManager.startAnalysis(bools[0], bools[1]);
+
+            if(list.isEmpty()){
+                return;
+            }
             results.put(i, list);
             i++;
         }
@@ -50,6 +54,10 @@ public class MachineLearningController {
 
         WekaManager wekaManager = new WekaManager();
         Map<String, int[]> results = wekaManager.startWhatIfScenario(MlModel.fromInt(code));
+
+        if(results.isEmpty()){
+            return;
+        }
         DatasetDao<Map<String, int[]>> dao = new CsvWhatIfDao();
         dao.save(results);
     }

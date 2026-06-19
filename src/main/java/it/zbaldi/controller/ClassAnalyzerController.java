@@ -1,10 +1,18 @@
 package it.zbaldi.controller;
 
-import it.zbaldi.model.*;
+import it.zbaldi.model.GitWorktreeManager;
+import it.zbaldi.model.LocalCache;
+import it.zbaldi.model.ReleaseInfoSearcher;
+import it.zbaldi.model.TicketSearcher;
 import it.zbaldi.model.daos.CsvFileDao;
+import it.zbaldi.model.data.DatasetEntry;
+import it.zbaldi.model.data.FixedBuggyTicket;
+import it.zbaldi.model.data.ReleaseInfo;
 import it.zbaldi.model.extractors.CkManagerExtractor;
 import it.zbaldi.model.extractors.GitManagerExtractor;
 import it.zbaldi.model.extractors.OtherMetricsExtractor;
+import it.zbaldi.model.interfaces.DatasetDao;
+import it.zbaldi.model.interfaces.MetricExtractor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;

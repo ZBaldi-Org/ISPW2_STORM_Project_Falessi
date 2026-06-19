@@ -1,5 +1,6 @@
 package it.zbaldi.model;
 
+import it.zbaldi.model.data.ReleaseInfo;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.StandardCharsets;
@@ -109,9 +110,19 @@ public class GitWorktreeManager {
         }
     }
 
+    /**
+     * Retrieves all Java classes affected by commits linked to a specific identifier.
+     * <p>
+     * This method resolves the target repository directory based on the current release
+     * and project configuration, then delegates the retrieval of touched classes to
+     * {@code getAllClasses}.
+     *
+     * @param id identifier used to filter linked Git commits
+     * @return set of Java class paths touched by matching commits, or an empty set on error
+     */
     public Set<String> getClassesTouchedByALinkedCommits(String id) {
 
-        log.info("Getting classes touched by a linked commit {}", id);
+        log.info("Getting Classes Touched By A Linked Commit {}", id);
         int release = LocalCache.getReleaseSize();
         Path path = Paths.get(System.getProperty("user.dir"));
         Path targetDir = path.resolve("storm_tags").resolve(release + "_" + PROJECT_NAME + "_" + LocalCache.getReleaseKey(release));
@@ -129,6 +140,14 @@ public class GitWorktreeManager {
         }
     }
 
+    /**
+     * Returns all Java files modified in commits matching a given Git grep tag.
+     *
+     * @param id        commit message keyword/tag used for filtering
+     * @param targetDir repository directory
+     * @return set of touched .java file paths
+     * @throws Exception if Git command execution fails
+     */
     private Set<String> getAllClasses(String id, String targetDir) throws Exception {
 
         Path processPath = Paths.get(targetDir).toAbsolutePath().normalize();
@@ -147,7 +166,7 @@ public class GitWorktreeManager {
         int exitCode = process.waitFor();
 
         if (exitCode != 0) {
-            throw new GitException("Error retrieving classes touched by commits with tag: " + id);
+            throw new GitException("Error Retrieving Classes Touched By Commits With Tag: " + id);
         }
         Set<String> classes = new HashSet<>();
 
@@ -162,7 +181,7 @@ public class GitWorktreeManager {
                 classes.add(line.replace('/', '\\'));
             }
         }
-        log.info("Got {} classes touched by commits with tag {}", classes.size(), id);
+        log.info("Got {} Classes Touched By Commits With Tag {}", classes.size(), id);
         return classes;
     }
 }

@@ -5,8 +5,8 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.mauricioaniche.ck.CK;
 import com.github.mauricioaniche.ck.CKClassResult;
-import it.zbaldi.model.DatasetEntry;
-import it.zbaldi.model.MetricExtractor;
+import it.zbaldi.model.data.DatasetEntry;
+import it.zbaldi.model.interfaces.MetricExtractor;
 
 import java.io.File;
 import java.nio.file.Files;

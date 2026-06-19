@@ -60,7 +60,7 @@ public class ConsoleView implements GenericView {
                     machineLearningController.executeProcess();
                     return false;
                 case 3:
-                    System.out.println("Choose: 0 -> Random Forest, 1 -> Naive Bayes, 2 -> IBk");
+                    System.out.println("Choose:\n0 -> Random Forest\n1 -> Naive Bayes\n2 -> IBk");
                     machineLearningController.startWhatIfScenario(scanner.nextInt());
                     return false;
                 case 4:
