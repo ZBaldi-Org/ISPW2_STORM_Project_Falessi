@@ -137,7 +137,7 @@ public class WekaManager {
      *
      * @return map of dataset names to [actualPositives, predictedPositives]
      */
-    public Map<String, int[]> startWhatIfScenario(MlModel mlModel){
+    public Map<String, int[]> startWhatIfScenario(MlModel mlModel, boolean featureSelectionFlag, boolean balancingFlag){
 
         try{
             log.info("Starting What-If Analysis ...");
@@ -179,7 +179,47 @@ public class WekaManager {
                 case IBK -> bestClassifier = new IBk();
                 default -> throw new Exception("Unsupported ML Model");
             }
-            bestClassifier.buildClassifier(a);
+
+            if (featureSelectionFlag) {
+                AttributeSelection selector = new AttributeSelection();
+                CfsSubsetEval eval = new CfsSubsetEval();
+                BestFirst search = new BestFirst();
+                search.setDirection(new weka.core.SelectedTag(0, BestFirst.TAGS_SELECTION)); //BACKWARD GREEDY
+                selector.setEvaluator(eval);
+                selector.setSearch(search);
+                selector.SelectAttributes(a);
+                a = selector.reduceDimensionality(a);
+                bPlus = selector.reduceDimensionality(bPlus);
+                b = selector.reduceDimensionality(b);
+                c = selector.reduceDimensionality(c);
+            }
+
+            Normalize normalize = new Normalize();
+            normalize.setInputFormat(a);
+            a = Filter.useFilter(a, normalize);
+            bPlus = Filter.useFilter(bPlus, normalize);
+            b = Filter.useFilter(b, normalize);
+            c = Filter.useFilter(c, normalize);
+            Instances aBalanced = null;
+
+            if (balancingFlag) {  //HYBRID APPROACH
+                aBalanced = new Instances(a);
+                SpreadSubsample filter = new SpreadSubsample();  //UNDERSAMPLING MAJORITY IS 2X MINORITY
+                filter.setOptions(new String[]{"-M", "2.0"});
+                filter.setInputFormat(aBalanced);
+                aBalanced = Filter.useFilter(aBalanced, filter);
+                Resample resample = new Resample();
+                resample.setOptions(new String[]{"-B", "1.0", "-Z", "200"}); //OVERSAMPLING MINORITY
+                resample.setInputFormat(aBalanced);
+                aBalanced = Filter.useFilter(aBalanced, resample);
+            }
+
+            if(aBalanced != null){
+                bestClassifier.buildClassifier(aBalanced);
+            }
+            else{
+                bestClassifier.buildClassifier(a);
+            }
             Map<String, Instances> map = Map.of("a", a, "bPlus", bPlus, "b", b, "c", c);
             Map<String, int[]> results = new HashMap<>();
             Evaluation eval = new Evaluation(a);

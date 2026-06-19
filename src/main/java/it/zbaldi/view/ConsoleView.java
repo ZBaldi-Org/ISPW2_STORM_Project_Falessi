@@ -61,7 +61,12 @@ public class ConsoleView implements GenericView {
                     return false;
                 case 3:
                     System.out.println("Choose:\n0 -> Random Forest\n1 -> Naive Bayes\n2 -> IBk");
-                    machineLearningController.startWhatIfScenario(scanner.nextInt());
+                    int choice = scanner.nextInt();
+                    System.out.println("Do Feature Selection True/False");
+                    boolean fs = scanner.nextBoolean();
+                    System.out.println("Do Balancing True/False");
+                    boolean balancing = scanner.nextBoolean();
+                    machineLearningController.startWhatIfScenario(choice, new boolean[]{fs, balancing});
                     return false;
                 case 4:
                     return true;

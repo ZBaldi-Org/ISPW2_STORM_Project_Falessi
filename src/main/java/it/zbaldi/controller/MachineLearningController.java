@@ -46,14 +46,16 @@ public class MachineLearningController {
     }
 
     /**
-     * Executes a what-if scenario using the selected ML model and persists the results to CSV.
+     * Runs a What-If scenario using the specified machine learning model
+     * and saves the generated results to a CSV file.
      *
-     * @param code integer code mapped to an {@link MlModel} used for the scenario execution
+     * @param code  the identifier of the machine learning model to use
+     * @param flags scenario configuration flags; the first two elements are used (feature selection and/or balancing)
      */
-    public void startWhatIfScenario(int code){
+    public void startWhatIfScenario(int code, boolean[] flags){
 
         WekaManager wekaManager = new WekaManager();
-        Map<String, int[]> results = wekaManager.startWhatIfScenario(MlModel.fromInt(code));
+        Map<String, int[]> results = wekaManager.startWhatIfScenario(MlModel.fromInt(code), flags[0], flags[1]);
 
         if(results.isEmpty()){
             return;
