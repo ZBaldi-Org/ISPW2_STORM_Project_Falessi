@@ -26,18 +26,19 @@ public class ConsoleView implements GenericView {
             showMenu();
             exit = checkOption();
         }
-
     }
 
     /**
      * Displays the main menu options to the user.
      */
     private void showMenu(){
+
         System.out.println("--------STORM PROJECT ANALYZER--------");
         System.out.println("Select one option:");
         System.out.println("1) Start Project Analysis");
         System.out.println("2) Start ML Analysis");
-        System.out.println("3) Exit");
+        System.out.println("3) Start What-If Scenario");
+        System.out.println("4) Exit");
     }
 
     /**
@@ -59,6 +60,10 @@ public class ConsoleView implements GenericView {
                     machineLearningController.executeProcess();
                     return false;
                 case 3:
+                    System.out.println("Choose: 0 -> Random Forest, 1 -> Naive Bayes, 2 -> IBk");
+                    machineLearningController.startWhatIfScenario(scanner.nextInt());
+                    return false;
+                case 4:
                     return true;
                 default:
                     System.out.println("Invalid option");

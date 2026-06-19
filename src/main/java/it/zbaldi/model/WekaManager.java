@@ -1,16 +1,18 @@
 package it.zbaldi.model;
 
+import it.zbaldi.model.enums.MlModel;
+import lombok.extern.slf4j.Slf4j;
+import weka.attributeSelection.AttributeSelection;
+import weka.attributeSelection.BestFirst;
+import weka.attributeSelection.CfsSubsetEval;
 import weka.classifiers.Classifier;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.evaluation.Evaluation;
 import weka.classifiers.lazy.IBk;
 import weka.classifiers.trees.RandomForest;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
-import lombok.extern.slf4j.Slf4j;
-import weka.attributeSelection.AttributeSelection;
-import weka.attributeSelection.BestFirst;
-import weka.attributeSelection.CfsSubsetEval;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.Resample;
 import weka.filters.supervised.instance.SpreadSubsample;
@@ -26,6 +28,8 @@ public class WekaManager {
         try{
             DataSource source = new DataSource("dataset.csv");
             Instances data = source.getDataSet();
+            data.deleteAttributeAt(1);
+            data.deleteAttributeAt(0);
             data.setClassIndex(data.numAttributes() - 1);
             RandomForest rf = new RandomForest();
             NaiveBayes nb = new NaiveBayes();
@@ -101,8 +105,74 @@ public class WekaManager {
             return results;
 
         }catch (Exception e){
-            log.error("Error using ML models on the dataset");
+            log.error("Error Using ML Models On The Dataset");
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Performs a what-if analysis using a RandomForest classifier.
+     * Evaluates different dataset scenarios and returns actual vs predicted positives.
+     *
+     * @return map of dataset names to [actualPositives, predictedPositives]
+     */
+    public Map<String, int[]> startWhatIfScenario(MlModel mlModel){
+
+        try{
+            DataSource source = new DataSource("dataset.csv");
+            Instances a = source.getDataSet();
+            a.deleteAttributeAt(1);
+            a.deleteAttributeAt(0);
+            a.setClassIndex(a.numAttributes() - 1);
+            Instances bPlus = new Instances(a, 0);
+            Instances b = new Instances(a, 0);
+            Instances c = new Instances(a, 0);
+            int smellsIndex = a.numAttributes() - 2;
+
+            for (int i = 0; i < a.numInstances(); i++) {
+                double smells = a.instance(i).value(smellsIndex);
+
+                if (smells > 0) {
+                    bPlus.add(a.instance(i));
+                    Instance entry = (Instance) a.instance(i).copy();
+                    entry.setDataset(a);
+                    entry.setValue(smellsIndex, 0);
+                    b.add(entry);
+                }
+                else if(smells == 0){
+                    c.add(a.instance(i));
+                }
+            }
+
+            Classifier bestClassifier;
+
+            switch(mlModel){
+                case RANDOM_FOREST -> bestClassifier = new RandomForest();
+                case NAIVEBAYES -> bestClassifier = new NaiveBayes();
+                case IBK -> bestClassifier = new IBk();
+                default -> throw new Exception("Unsupported ML Model");
+            }
+            bestClassifier.buildClassifier(a);
+            Map<String, Instances> map = Map.of("a", a, "bPlus", bPlus, "b", b, "c", c);
+            Map<String, int[]> results = new HashMap<>();
+            Evaluation eval = new Evaluation(a);
+
+            for(Map.Entry<String, Instances> entry : map.entrySet()) {
+                eval.evaluateModel(bestClassifier, entry.getValue());
+                double[][] cm = eval.confusionMatrix();
+                double tn = cm[0][0];
+                double fp = cm[0][1];
+                double fn = cm[1][0];
+                double tp = cm[1][1];
+                int actualPositives = (int) (fn + tp);
+                int predictedPositives = (int) (fp + tp);
+                results.put(entry.getKey(), new int[]{actualPositives, predictedPositives});
+            }
+            return results;
+
+        }catch (Exception e){
+            log.error("Error Doing WhatIfScenario, message: {}", e.getMessage());
+            return Collections.emptyMap();
         }
     }
 }
