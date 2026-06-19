@@ -159,7 +159,7 @@ public class GitWorktreeManager {
             }
 
             if (line.endsWith(".java")) {
-                classes.add(line);
+                classes.add(line.replace('/', '\\'));
             }
         }
         log.info("Got {} classes touched by commits with tag {}", classes.size(), id);
