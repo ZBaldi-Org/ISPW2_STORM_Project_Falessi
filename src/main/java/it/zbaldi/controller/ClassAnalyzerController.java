@@ -140,7 +140,7 @@ public class ClassAnalyzerController {
             Set<String> classes = new GitWorktreeManager().getClassesTouchedByALinkedCommits(ticket.getKey());
 
             if(!classes.isEmpty()){
-                linkedCommits.put(ticket, classes);;
+                linkedCommits.put(ticket, classes);
             }
         }
         return linkedCommits;
