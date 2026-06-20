@@ -11,6 +11,9 @@ public class LocalCache {
     /** Map storing cached key-value pairs. Keys are strings, values are integers. */
     private static HashMap<String, Integer> totalReleaseMap = new HashMap<>();
 
+    /** Hide constructor */
+    private LocalCache() {}
+
     /**
      * Adds a key-value pair to the cache.
      * This method is synchronized to ensure thread safety.

@@ -2,6 +2,8 @@ package it.zbaldi.model;
 
 import it.zbaldi.model.data.MlDatasetEntry;
 import it.zbaldi.model.enums.MlModel;
+import it.zbaldi.model.exceptions.MlException;
+import it.zbaldi.model.util.MlMetricsTuple;
 import lombok.extern.slf4j.Slf4j;
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.BestFirst;
@@ -20,10 +22,14 @@ import weka.filters.supervised.instance.SpreadSubsample;
 import weka.filters.unsupervised.attribute.Normalize;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 @Slf4j
 public class WekaManager {
+
+    /** Output dataset file name. */
+    private static final String OUTPUT = "dataset.csv";
 
     /**
      * Runs a Weka machine learning evaluation pipeline on the dataset using multiple classifiers
@@ -41,12 +47,12 @@ public class WekaManager {
 
         try{
             log.info("Starting Weka Analysis ...");
-            File file = new File("dataset.csv");
+            File file = new File(OUTPUT);
 
-            if (!file.exists() && !file.isFile()) {
-                throw  new Exception("Dataset file does not exist or is not a file.");
+            if (!file.exists()) {
+                throw  new IOException("Dataset file does not exist or is not a file.");
             }
-            DataSource source = new DataSource("dataset.csv");
+            DataSource source = new DataSource(OUTPUT);
             Instances data = source.getDataSet();
             data.deleteAttributeAt(1);
             data.deleteAttributeAt(0);
@@ -59,8 +65,13 @@ public class WekaManager {
 
             for (Classifier model : models) {
 
-                double averageAccuracy, averagePrecision,  averageRecall, averageF1, averageAuc, averageKappa;
-                double sumAccuracy = 0, sumPrecision = 0, sumRecall = 0, sumF1 = 0, sumAuc = 0, sumKappa = 0;
+                double averageAccuracy;
+                double averagePrecision;
+                double averageRecall;
+                double averageF1;
+                double averageAuc;
+                double averageKappa;
+                MlMetricsTuple tuple = new MlMetricsTuple();
 
                 for (int i = 0; i < 10; i++) {
                     Instances runData = new Instances(data);
@@ -69,57 +80,15 @@ public class WekaManager {
                     if (runData.classAttribute().isNominal()) {
                         runData.stratify(10);
                     }
-
-                    for (int j = 0; j < 10; j++) {
-                        Instances train = runData.trainCV(10, j);
-                        Instances test = runData.testCV(10, j);
-
-                        if (featureSelectionFlag) {
-                            AttributeSelection selector = new AttributeSelection();
-                            CfsSubsetEval eval = new CfsSubsetEval();
-                            BestFirst search = new BestFirst();
-                            search.setDirection(new weka.core.SelectedTag(0, BestFirst.TAGS_SELECTION)); //BACKWARD GREEDY
-                            selector.setEvaluator(eval);
-                            selector.setSearch(search);
-                            selector.SelectAttributes(train);
-                            train = selector.reduceDimensionality(train);
-                            test = selector.reduceDimensionality(test);
-                        }
-
-                        Normalize normalize = new Normalize();
-                        normalize.setInputFormat(train);
-                        train = Filter.useFilter(train, normalize);
-                        test = Filter.useFilter(test, normalize);
-
-                        if (balancingFlag) {  //HYBRID APPROACH
-                            SpreadSubsample filter = new SpreadSubsample();  //UNDERSAMPLING MAJORITY IS 2X MINORITY
-                            filter.setOptions(new String[]{"-M", "2.0"});
-                            filter.setInputFormat(train);
-                            train = Filter.useFilter(train, filter);
-                            Resample resample = new Resample();
-                            resample.setOptions(new String[]{"-B", "1.0", "-Z", "200"}); //OVERSAMPLING MINORITY
-                            resample.setInputFormat(train);
-                            train = Filter.useFilter(train, resample);
-                        }
-
-                        model.buildClassifier(train);
-                        Evaluation eval = new Evaluation(train);
-                        eval.evaluateModel(model, test);
-                        sumAccuracy += eval.pctCorrect();
-                        sumPrecision += eval.precision(1);
-                        sumRecall += eval.recall(1);
-                        sumF1 += eval.fMeasure(1);
-                        sumAuc += eval.areaUnderROC(1);
-                        sumKappa += eval.kappa();
-                    }
+                    startCrossValidation(runData, featureSelectionFlag, balancingFlag, model, tuple);
                 }
 
-                averageAccuracy = sumAccuracy / 100;
-                averagePrecision = sumPrecision / 100;
-                averageRecall = sumRecall / 100;
-                averageF1 = sumF1 / 100;
-                averageAuc = sumAuc / 100;
-                averageKappa = sumKappa / 100;
+                averageAccuracy = tuple.getAccuracy() / 10000;
+                averagePrecision = tuple.getPrecision() / 100;
+                averageRecall = tuple.getRecall() / 100;
+                averageF1 = tuple.getF1() / 100;
+                averageAuc = tuple.getF1() / 100;
+                averageKappa = tuple.getKappa() / 100;
                 results.add(new MlDatasetEntry(model.getClass().getSimpleName(), featureSelectionFlag, balancingFlag, averageAccuracy, averagePrecision, averageRecall, averageF1, averageAuc, averageKappa));
             }
             log.info("Finished Weka Analysis ...");
@@ -128,6 +97,61 @@ public class WekaManager {
         }catch (Exception e){
             log.error("Error Using ML Models On The Dataset, Message: {}", e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Performs 10-fold cross validation with optional feature selection and class balancing.
+     * Aggregates evaluation metrics into the provided tuple.
+     *
+     * @param runData              dataset to evaluate
+     * @param featureSelectionFlag enables CFS feature selection if true
+     * @param balancingFlag        enables hybrid resampling if true
+     * @param model                classifier to train and test
+     * @param tuple                object storing aggregated metrics
+     * @throws Exception if evaluation fails
+     */
+    private void startCrossValidation(Instances runData, boolean featureSelectionFlag, boolean balancingFlag, Classifier model, MlMetricsTuple tuple) throws Exception{
+
+        for (int j = 0; j < 10; j++) {
+            Instances train = runData.trainCV(10, j);
+            Instances test = runData.testCV(10, j);
+
+            if (featureSelectionFlag) {
+                AttributeSelection selector = new AttributeSelection();
+                CfsSubsetEval eval = new CfsSubsetEval();
+                BestFirst search = new BestFirst();
+                search.setDirection(new weka.core.SelectedTag(0, BestFirst.TAGS_SELECTION)); //BACKWARD GREEDY
+                selector.setEvaluator(eval);
+                selector.setSearch(search);
+                selector.SelectAttributes(train);
+                train = selector.reduceDimensionality(train);
+                test = selector.reduceDimensionality(test);
+            }
+            Normalize normalize = new Normalize();
+            normalize.setInputFormat(train);
+            train = Filter.useFilter(train, normalize);
+            test = Filter.useFilter(test, normalize);
+
+            if (balancingFlag) {  //HYBRID APPROACH
+                SpreadSubsample filter = new SpreadSubsample();  //UNDERSAMPLING MAJORITY IS 2X MINORITY
+                filter.setOptions(new String[]{"-M", "2.0"});
+                filter.setInputFormat(train);
+                train = Filter.useFilter(train, filter);
+                Resample resample = new Resample();
+                resample.setOptions(new String[]{"-B", "1.0", "-Z", "200"}); //OVERSAMPLING MINORITY
+                resample.setInputFormat(train);
+                train = Filter.useFilter(train, resample);
+            }
+            model.buildClassifier(train);
+            Evaluation eval = new Evaluation(train);
+            eval.evaluateModel(model, test);
+            tuple.setAccuracy((tuple.getAccuracy() + eval.pctCorrect()));
+            tuple.setPrecision((tuple.getPrecision() + eval.precision(1)));
+            tuple.setRecall((tuple.getRecall() + eval.recall(1)));
+            tuple.setF1((tuple.getF1() + eval.fMeasure(1)));
+            tuple.setAuc((tuple.getAuc() + eval.areaUnderROC(1)));
+            tuple.setKappa((tuple.getKappa() + eval.kappa()));
         }
     }
 
@@ -141,12 +165,12 @@ public class WekaManager {
 
         try{
             log.info("Starting What-If Analysis ...");
-            File file = new File("dataset.csv");
+            File file = new File(OUTPUT);
 
-            if (!file.exists() && !file.isFile()) {
-                throw  new Exception("Dataset file does not exist or is not a file.");
+            if (!file.exists()) {
+                throw  new IOException("Dataset file does not exist or is not a file.");
             }
-            DataSource source = new DataSource("dataset.csv");
+            DataSource source = new DataSource(OUTPUT);
             Instances a = source.getDataSet();
             a.deleteAttributeAt(1);
             a.deleteAttributeAt(0);
@@ -166,7 +190,7 @@ public class WekaManager {
                     entry.setValue(smellsIndex, 0);
                     b.add(entry);
                 }
-                else if(smells == 0){
+                else {
                     c.add(a.instance(i));
                 }
             }
@@ -177,7 +201,7 @@ public class WekaManager {
                 case RANDOM_FOREST -> bestClassifier = new RandomForest();
                 case NAIVEBAYES -> bestClassifier = new NaiveBayes();
                 case IBK -> bestClassifier = new IBk();
-                default -> throw new Exception("Unsupported ML Model");
+                default -> throw new MlException("Unsupported ML Model");
             }
 
             if (featureSelectionFlag) {
@@ -229,7 +253,6 @@ public class WekaManager {
                 if(entry.getValue().numInstances() > 0) {
                     eval.evaluateModel(bestClassifier, entry.getValue());
                     double[][] cm = eval.confusionMatrix();
-                    double tn = cm[0][0];
                     double fp = cm[0][1];
                     double fn = cm[1][0];
                     double tp = cm[1][1];

@@ -18,10 +18,10 @@ import java.util.List;
 public class ReleaseInfoSearcher {
 
     /** Jira project name used to build the API endpoint. */
-    private final String PROJECT_NAME = "STORM";
+    private static final String PROJECT_NAME = "STORM";
 
     /** Jira REST API endpoint to retrieve project versions. */
-    private final String URL = "https://issues.apache.org/jira/rest/api/2/project/" + PROJECT_NAME + "/versions";
+    private static final String URL = "https://issues.apache.org/jira/rest/api/2/project/" + PROJECT_NAME + "/versions";
 
     /**
      * Retrieves Jira releases (versions), converts them into ReleaseInfo objects,

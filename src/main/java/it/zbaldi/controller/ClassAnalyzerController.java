@@ -13,6 +13,7 @@ import it.zbaldi.model.extractors.GitManagerExtractor;
 import it.zbaldi.model.extractors.OtherMetricsExtractor;
 import it.zbaldi.model.interfaces.DatasetDao;
 import it.zbaldi.model.interfaces.MetricExtractor;
+import it.zbaldi.model.util.Couple;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;
@@ -193,60 +194,93 @@ public class ClassAnalyzerController {
 
         linkedClassesMap.forEach((key, value) -> {
 
-            Integer start = null;
-            Integer end = null;
+            Couple<Integer, Integer> couple = new Couple<>();
+            calculateBoundaries(key, couple, datasetEntryMap, proportion);
 
-            if(!key.getAffectedVersion().equals("NOT FOUND")){
-                Integer affected = LocalCache.getReleaseValue(key.getAffectedVersion());
-
-                if(affected != null){  //I'm not over x %
-                    start = affected;
-                    Integer fix = LocalCache.getReleaseValue(key.getFixVersion());
-                    end = Objects.requireNonNullElseGet(fix, datasetEntryMap::size);
-                }
-            }
-            else{
-
-                Integer fix = LocalCache.getTotalReleaseValue(key.getFixVersion());
-                Integer opening = LocalCache.getTotalReleaseValue(key.getOpeningVersion());
-
-                if(fix != null && opening != null){
-                    start = (int) (fix - (fix-opening) * proportion);
-
-                    if(start > datasetEntryMap.size()){
-                        start = null;
-                    }
-                    else if(start <= 0){
-                        start = 1;
-                    }
-                    end = Objects.requireNonNullElseGet(LocalCache.getReleaseValue(key.getFixVersion()), datasetEntryMap::size);
-                }
-            }
-
-            if(start != null){
-
-                if (start.intValue() == end.intValue()) {
-                    List<DatasetEntry> datasetEntries = datasetEntryMap.get(start);
-                    datasetEntries.forEach(e -> {
-
-                        if (value.contains(e.getClassPath())) {
-                            e.setBuggy(true);
-                        }
-                    });
-                }
-                else {
-
-                    for (int i = start; i < end; i++) {
-                        List<DatasetEntry> datasetEntries = datasetEntryMap.get(i);
-                        datasetEntries.forEach(e -> {
-
-                            if (value.contains(e.getClassPath())) {
-                                e.setBuggy(true);
-                            }
-                        });
-                    }
-                }
+            if(couple.getA() != null){
+                startLabeling(datasetEntryMap, value, couple.getA(), couple.getB());
             }
         });
+    }
+
+    /**
+     * Calculates the start and end boundary indices for a buggy ticket.
+     * The boundaries are derived either from affected/fix versions or, if missing,
+     * from opening/fix versions using a proportional estimation.
+     * <p>
+     * The computed values are stored in the provided Couple object.
+     *
+     * @param key             ticket containing version information
+     * @param couple          output object where start (A) and end (B) boundaries are stored
+     * @param datasetEntryMap map used to determine dataset size fallback
+     * @param proportion      factor used to estimate start position when version data is incomplete
+     */
+    private void calculateBoundaries(FixedBuggyTicket key, Couple<Integer, Integer> couple, Map<Integer, List<DatasetEntry>> datasetEntryMap,  float proportion) {
+
+        Integer start = null;
+        Integer end = null;
+
+        if (!key.getAffectedVersion().equals("NOT FOUND")) {
+            Integer affected = LocalCache.getReleaseValue(key.getAffectedVersion());
+
+            if (affected != null) {  //I'm not over x %
+                start = affected;
+                Integer fix = LocalCache.getReleaseValue(key.getFixVersion());
+                end = Objects.requireNonNullElseGet(fix, datasetEntryMap::size);
+            }
+        }
+        else {
+
+            Integer fix = LocalCache.getTotalReleaseValue(key.getFixVersion());
+            Integer opening = LocalCache.getTotalReleaseValue(key.getOpeningVersion());
+
+            if (fix != null && opening != null) {
+                start = (int) (fix - (fix - opening) * proportion);
+
+                if (start > datasetEntryMap.size()) {
+                    start = null;
+                }
+                else if (start <= 0) {
+                    start = 1;
+                }
+                end = Objects.requireNonNullElseGet(LocalCache.getReleaseValue(key.getFixVersion()), datasetEntryMap::size);
+            }
+        }
+        couple.setA(start);
+        couple.setB(end);
+    }
+
+    /**
+     * Labels dataset entries as buggy within a given range of keys.
+     * If the range includes only one key, processes that single entry list.
+     *
+     * @param datasetEntryMap map containing dataset entries grouped by integer keys
+     * @param value           set of class paths used to determine buggy entries
+     * @param start           starting key (inclusive)
+     * @param end             ending key (exclusive)
+     */
+    private void startLabeling(Map<Integer, List<DatasetEntry>> datasetEntryMap, Set<String> value, Integer start, Integer end){
+
+        if (start.intValue() == end.intValue()) {
+            List<DatasetEntry> datasetEntries = datasetEntryMap.get(start);
+            datasetEntries.forEach(e -> {
+
+                if (value.contains(e.getClassPath())) {
+                    e.setBuggy(true);
+                }
+            });
+        }
+        else {
+
+            for (int i = start; i < end; i++) {
+                List<DatasetEntry> datasetEntries = datasetEntryMap.get(i);
+                datasetEntries.forEach(e -> {
+
+                    if (value.contains(e.getClassPath())) {
+                        e.setBuggy(true);
+                    }
+                });
+            }
+        }
     }
 }

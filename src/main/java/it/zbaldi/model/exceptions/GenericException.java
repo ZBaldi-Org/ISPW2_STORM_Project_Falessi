@@ -1,0 +1,8 @@
+package it.zbaldi.model.exceptions;
+
+public class GenericException extends Exception {
+
+    public GenericException(String message) {
+        super(message);
+    }
+}

@@ -1,6 +1,8 @@
 package it.zbaldi.model;
 
 import it.zbaldi.model.data.ReleaseInfo;
+import it.zbaldi.model.exceptions.GenericException;
+import it.zbaldi.model.exceptions.GitException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.StandardCharsets;
@@ -19,7 +21,10 @@ public class GitWorktreeManager {
     private static final String URL = "https://github.com/apache/storm.git";
 
     /** Local directory name used for cloning the repository. */
-    private final String PROJECT_NAME = "storm";
+    private static final String PROJECT_NAME = "storm";
+
+    /** Local directory name where are saved worktrees. */
+    private static final String PATH = "storm_tags";
 
     /**
      * Builds Git worktrees for a list of releases.
@@ -39,74 +44,86 @@ public class GitWorktreeManager {
 
             for (ReleaseInfo releaseInfo : releaseInfoList) {
                 LocalCache.addRelease(releaseInfo.getReleaseName(), i);
-
-                try {
-                    createSnapshot(releaseInfo.getReleaseName(), i);
-
-                } catch (GitException e) {
-                    log.warn("{} Retrying with v{} tag", e.getMessage(), releaseInfo.getReleaseName());
-                    createSnapshot("v" + releaseInfo.getReleaseName(), i);
-                }
-                i++;
+                createSnapshot(releaseInfo, i);
             }
 
-        } catch (Exception e) {
+        } catch (GenericException e) {
             log.error(e.getMessage());
         }
     }
 
     /**
-     * Clones a Git repository from the given URL using a system git command.
-     * Throws an exception if the clone operation fails.
+     * Creates a snapshot for the specified release.
+     * If the release tag is not found, retries using the same tag prefixed with {@code v}.
      *
-     * @throws Exception if the git clone process fails
+     * @param releaseInfo release information containing the release name
+     * @param i           snapshot index
+     * @throws GenericException if snapshot creation fails
      */
-    private void cloneRepo() throws Exception {
+    private void createSnapshot(ReleaseInfo releaseInfo, int i) throws GenericException {
 
-        ProcessBuilder pb = new ProcessBuilder("git", "clone", URL);
-        pb.inheritIO();
-        Process process = pb.start();
-        int exitCode = process.waitFor();
+        try {
+            createSnapshot(releaseInfo.getReleaseName(), i);
 
-        if (exitCode != 0) {
-            throw new Exception("Error cloning repository: " + URL);
+        } catch (GitException e) {
+            log.warn("{} Retrying with v{} tag", e.getMessage(), releaseInfo.getReleaseName());
+            createSnapshot("v" + releaseInfo.getReleaseName(), i);
         }
     }
 
     /**
-     * Creates a Git snapshot of the repository using a specific tag via `git worktree`.
-     * <p>
-     * The snapshot is stored in a separate directory named:
-     * PROJECT_NAME_tag.
-     * <p>
-     * The method executes:
-     * git worktree add <targetDir> <tag>
-     * <p>
-     * If the tag is invalid or does not exist in the local repository,
-     * a GitException is thrown. Other Git errors result in a generic Exception.
+     * Clones a Git repository from the given URL using a system git command.
      *
-     * @param tag the Git tag used to create the snapshot
-     * @throws GitException if the tag is invalid or not found
-     * @throws Exception    for general Git execution errors
+     * @throws GenericException if the clone operation fails
      */
-    private void createSnapshot(String tag, int order) throws Exception {
+    private void cloneRepo() throws GenericException {
 
-        Path path = Paths.get(System.getProperty("user.dir"));
-        Path targetDir = path.resolve("storm_tags").resolve(order + "_" + PROJECT_NAME + "_" + tag);
-        ProcessBuilder pb = new ProcessBuilder("git", "worktree", "add", targetDir.toString(), tag);
-        Path base = Paths.get(PROJECT_NAME).toAbsolutePath().normalize();
-        pb.directory(base.toFile());
-        Process process = pb.start();
-        int exitCode = process.waitFor();
-        String stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            ProcessBuilder pb = new ProcessBuilder("git", "clone", URL);
+            pb.inheritIO();
+            Process process = pb.start();
+            int exitCode = process.waitFor();
 
-        if (exitCode != 0) {
-
-            if (stderr.contains("fatal: invalid reference:")) {
-                throw new GitException("Invalid Tag: " + tag);
-            } else {
-                throw new Exception("Error creating worktree for tag: " + tag);
+            if (exitCode != 0) {
+                throw new GitException("Error Cloning Repository: " + URL);
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new GenericException("Error Cloning Repository: " + URL + " Message: " + e.getMessage());
+
+        } catch (Exception e) {
+            throw new GenericException("Error Cloning Repository: " + URL + " Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Creates a Git worktree snapshot for the given tag.
+     *
+     * @param tag   the Git tag
+     * @param order snapshot order used in directory naming
+     * @throws GenericException if the tag is invalid or not found
+     */
+    private void createSnapshot(String tag, int order) throws GenericException{
+
+        try {
+            Path path = Paths.get(System.getProperty("user.dir"));
+            Path targetDir = path.resolve(PATH).resolve(order + "_" + PROJECT_NAME + "_" + tag);
+            ProcessBuilder pb = new ProcessBuilder("git", "worktree", "add", targetDir.toString(), tag);
+            Path base = Paths.get(PROJECT_NAME).toAbsolutePath().normalize();
+            pb.directory(base.toFile());
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            String stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+
+            if (exitCode != 0 && stderr.contains("fatal: invalid reference:")) {
+                throw new GitException("Invalid Tag: " + tag);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new GenericException("Error Creating Worktree For Tag: " + tag + " Message: " + e.getMessage());
+
+        } catch (Exception e) {
+            throw new GenericException("Error Creating Worktree For Tag: " + tag + " Message: " + e.getMessage());
         }
     }
 
@@ -125,16 +142,16 @@ public class GitWorktreeManager {
         log.info("Getting Classes Touched By A Linked Commit {}", id);
         int release = LocalCache.getReleaseSize();
         Path path = Paths.get(System.getProperty("user.dir"));
-        Path targetDir = path.resolve("storm_tags").resolve(release + "_" + PROJECT_NAME + "_" + LocalCache.getReleaseKey(release));
+        Path targetDir = path.resolve(PATH).resolve(release + "_" + PROJECT_NAME + "_" + LocalCache.getReleaseKey(release));
 
         if (!Files.exists(targetDir)) {
-            targetDir = path.resolve("storm_tags").resolve(release + "_" + PROJECT_NAME + "_v" + LocalCache.getReleaseKey(release));
+            targetDir = path.resolve(PATH).resolve(release + "_" + PROJECT_NAME + "_v" + LocalCache.getReleaseKey(release));
         }
 
         try {
             return getAllClasses(id, targetDir.toString());
 
-        } catch (Exception e) {
+        } catch (GenericException e) {
             log.error(e.getMessage());
             return  Collections.emptySet();
         }
@@ -146,42 +163,51 @@ public class GitWorktreeManager {
      * @param id        commit message keyword/tag used for filtering
      * @param targetDir repository directory
      * @return set of touched .java file paths
-     * @throws Exception if Git command execution fails
+     * @throws GenericException if the tag is invalid or not found
      */
-    private Set<String> getAllClasses(String id, String targetDir) throws Exception {
+    private Set<String> getAllClasses(String id, String targetDir) throws GenericException {
 
-        Path processPath = Paths.get(targetDir).toAbsolutePath().normalize();
+        try {
+            Path processPath = Paths.get(targetDir).toAbsolutePath().normalize();
 
-        ProcessBuilder pb = new ProcessBuilder(
-                "git", "log",
-                "--all",
-                "-i",
-                "--grep=" + id,
-                "--name-only",
-                "--pretty=format:"
-        );
-        pb.directory(processPath.toFile());
-        Process process = pb.start();
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        int exitCode = process.waitFor();
+            ProcessBuilder pb = new ProcessBuilder(
+                    "git", "log",
+                    "--all",
+                    "-i",
+                    "--grep=" + id,
+                    "--name-only",
+                    "--pretty=format:"
+            );
+            pb.directory(processPath.toFile());
+            Process process = pb.start();
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exitCode = process.waitFor();
 
-        if (exitCode != 0) {
-            throw new GitException("Error Retrieving Classes Touched By Commits With Tag: " + id);
-        }
-        Set<String> classes = new HashSet<>();
-
-        for (String line : output.split("\n")) {
-            line = line.trim();
-
-            if (line.isBlank()) {
-                continue;
+            if (exitCode != 0) {
+                throw new GitException("Error Retrieving Classes Touched By Commits With Tag: " + id);
             }
+            Set<String> classes = new HashSet<>();
 
-            if (line.endsWith(".java")) {
-                classes.add(line.replace('/', '\\'));
+            for (String line : output.split("\n")) {
+                line = line.trim();
+
+                if (line.isBlank()) {
+                    continue;
+                }
+
+                if (line.endsWith(".java")) {
+                    classes.add(line.replace('/', '\\'));
+                }
             }
+            log.info("Got {} Classes Touched By Commits With Tag {}", classes.size(), id);
+            return classes;
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new GenericException("Error Retrieving Classes Touched By Commits With Tag: " + id + " Message: " + e.getMessage());
+
+        } catch (Exception e) {
+            throw new GenericException("Error Retrieving Classes Touched By Commits With Tag: "+ id + " Message: "+ e.getMessage());
         }
-        log.info("Got {} Classes Touched By Commits With Tag {}", classes.size(), id);
-        return classes;
     }
 }

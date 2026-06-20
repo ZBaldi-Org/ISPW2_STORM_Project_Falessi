@@ -18,21 +18,17 @@ import java.util.Set;
 public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<DatasetEntry>>, Void> {
 
     /** PMD configuration used for loading rule sets. */
-    private final PMDConfiguration CONFIGURATION = new PMDConfiguration();
+    private final PMDConfiguration configuration = new PMDConfiguration();
 
     /** RuleSetLoader created from the PMD configuration. */
-    private final RuleSetLoader LOADER = RuleSetLoader.fromPmdConfig(CONFIGURATION);
+    private final RuleSetLoader loader = RuleSetLoader.fromPmdConfig(configuration);
 
     /** The primary PMD rule set (quickstart) loaded from resources. */
-    private final RuleSet RULESET = LOADER.loadFromResource("rulesets/java/quickstart.xml");
-
-//    private final RuleSet RULESET2 = LOADER.loadFromResource("rulesets/java/design.xml");
-//    private final RuleSet RULESET3 = LOADER.loadFromResource("category/java/bestpractices.xml");
-//    private final RuleSet RULESET4 = LOADER.loadFromResource("category/java/errorprone.xml");
+    private final RuleSet ruleSet = loader.loadFromResource("rulesets/java/quickstart.xml");
 
     /** Wrapper containing the selected rule set(s) for PMD analysis. */
     @SuppressWarnings({"deprecation"})
-    private final RuleSets RULESETS = new RuleSets(List.of(RULESET));
+    private final RuleSets ruleSets = new RuleSets(List.of(ruleSet));
 
     /**
      * Processes dataset releases by computing metrics for each release.
@@ -158,10 +154,10 @@ public class OtherMetricsExtractor implements MetricExtractor<Map<Integer, List<
             Report report = new Report();
             RuleContext context = new RuleContext();
             context.setReport(report);
-            SourceCodeProcessor processor = new SourceCodeProcessor(CONFIGURATION);
+            SourceCodeProcessor processor = new SourceCodeProcessor(configuration);
             Path path = Paths.get(datasetEntry.getRelativeClassPath());
             InputStream is = Files.newInputStream(path);
-            processor.processSourceCode(is, RULESETS, context);
+            processor.processSourceCode(is, ruleSets, context);
             datasetEntry.setNumberOfSmells(report.getViolations().size());
 
         }catch (Exception e){
