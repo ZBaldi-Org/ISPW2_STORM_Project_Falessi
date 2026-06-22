@@ -38,7 +38,8 @@ public class ConsoleView implements GenericView {
         System.out.println("1) Start Project Analysis");
         System.out.println("2) Start ML Analysis");
         System.out.println("3) Start What-If Scenario");
-        System.out.println("4) Exit");
+        System.out.println("4) Sort Last Release Classes");
+        System.out.println("5) Exit");
     }
 
     /**
@@ -69,6 +70,9 @@ public class ConsoleView implements GenericView {
                     machineLearningController.startWhatIfScenario(choice, new boolean[]{fs, balancing});
                     return false;
                 case 4:
+                    classAnalyzerController.searchClassesForLastMilestone();
+                    return false;
+                case 5:
                     return true;
                 default:
                     System.out.println("Invalid option");

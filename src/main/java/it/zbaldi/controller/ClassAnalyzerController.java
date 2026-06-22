@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 @Slf4j
@@ -282,5 +283,26 @@ public class ClassAnalyzerController {
                 });
             }
         }
+    }
+
+    /**
+     * Analyzes the latest repository, sorts the detected classes
+     * by number of smells in descending order, and exports the results to a CSV file.
+     */
+    public void searchClassesForLastMilestone(){
+
+        Path path = Path.of("storm/");
+        if(!Files.exists(path)){
+            log.error("Repository Not Cloned, First Clone The Repository In This Working Project Or Start Previous Operations!");
+            return;
+        }
+        MetricExtractor<String, List<DatasetEntry>> extractor = new CkManagerExtractor();
+        List<DatasetEntry> lastRelease = extractor.startAnalysis(path.toString());
+        Map<Integer, List<DatasetEntry>> datasetEntryMap = new HashMap<>();
+        datasetEntryMap.put(1, lastRelease);
+        MetricExtractor<Map<Integer, List<DatasetEntry>>, Void> extractor2 = new OtherMetricsExtractor();
+        extractor2.startAnalysis(datasetEntryMap);
+        datasetEntryMap.values().forEach(value -> value.sort(Comparator.comparing(DatasetEntry::getNumberOfSmells).reversed()));
+        new CsvFileDao().save(datasetEntryMap);
     }
 }
